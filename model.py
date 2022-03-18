@@ -1,5 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
-import server
+from flask import Flask
 
 db = SQLAlchemy()
 
@@ -21,7 +21,7 @@ class Address(db.Model):
         return f'<Address address_id={self.address_id} has been added.>'
 
 
-def connect_to_db(app, db_uri='postgresql:///validate', echo=True):
+def connect_to_db(app, db_uri='postgresql:///addresses', echo=True):
     app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
     app.config['SQLALCHEMY_ECHO'] = echo
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
