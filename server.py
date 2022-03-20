@@ -1,3 +1,5 @@
+
+from ast import parse
 from flask import Flask, request, redirect, render_template, flash
 from flask_caching import Cache
 import sqlalchemy
@@ -6,11 +8,16 @@ from model import db, Address, connect_to_db
 from dotenv import load_dotenv
 import requests
 import crud
+from urllib.parse import quote
 
 app = Flask(__name__)
 app.secret_key = os.getenv("app.secret_key")
 cache = Cache()
-app.config["CACHE_TYPE"] = "simple"
+config = {
+    "DEBUG": True,
+    "CACHE_TYPE": "SimpleCache",
+}
+app.config.from_mapping(config)
 cache.init_app(app)
 # load the API key
 load_dotenv()
@@ -30,11 +37,8 @@ def check_db():
     state = request.form.get("state-name")
     zipcode = request.form.get("zipcode")
 
-    print("this is before the find address function")
-
     check_db_for_address = crud.find_address(address_line=address_line,
                                              city=city, state=state, zipcode=zipcode)
-    print("This is after the find address function")
 
     data = {"address_line": check_db_for_address[0],
             "city": check_db_for_address[1],
@@ -42,65 +46,69 @@ def check_db():
             "zip_code": check_db_for_address[3],
             "latitude": check_db_for_address[4],
             "longitude": check_db_for_address[5]}
-    print("we made it after the find_address function and have results")
 
     return data
 
 
-@app.route("/", methods=['POST'])
-@cache.cached(timeout=120)
-def geocode():
-    """takes user input, makes a request to mapbox API and it returns long/lat coordinates"""
+def parse_addresses():
+    """grabs user input from form and returns it as a list"""
 
     address_line = request.form.get("address-line")
-    encoded_add = address_line.replace(" ", "%20")  # replace spaces with "%20"
     city = request.form.get("city-name")
-    encoded_city = city.replace(" ", "%20")  # replace spaces with "%20"
     state = request.form.get("state-name")
     zipcode = request.form.get("zipcode")
 
+    return [address_line, city, state, zipcode]
+
+
+@app.route("/", methods=['POST'])
+# @cache.cached(timeout=10)
+def geocode():
+    """takes user input, makes a request to mapbox API and it returns long/lat coordinates"""
+
+    parsed_address = parse_addresses()
+    join_add = " ".join(parsed_address)
+    encoded_address = quote(join_add)
+
     # check the db with the user input
     try:
-        # run the check_db function
-        found_address = check_db()
-        print("we came back after the check_db function")
-        return found_address
-        # return render_template("geocode.html", results=data)
-
-    except AttributeError:
-        # if not found, run a look up in mapbox API. If successful, add address + long / lat in db
-        full_encoded_address = "".join(
-            encoded_add + "%20" + encoded_city + "%20" + state + "%20" + zipcode)
+        # check cache, if not in cache, run API
+        data = cache.get(encoded_address)
+        if data is not None:
+            print("this is the cache result")
+            return data
 
         mapbox_token = API_KEY
-        query = full_encoded_address
-        payload = {"query": full_encoded_address, "mapbox_token": mapbox_token}
+        query = encoded_address
+        payload = {"query": encoded_address,
+                   "mapbox_token": mapbox_token}
 
         url = f"https://api.mapbox.com/geocoding/v5/mapbox.places/{query}.json?access_token={mapbox_token}"
         req = requests.get(url, params=payload)
+
         res = req.json()
         # lat & long returned from API
         results = list(res["features"][0]["center"])
-
         if results:
-            # add found address to db
-
             added_address = crud.add_address(
-                address_line=address_line, city=city, state=state, zipcode=zipcode, longitude=results[0], latitude=results[1])
-            print("We've added the address to the db")
+                address_line=parsed_address[0], city=parsed_address[1], state=parsed_address[2], zipcode=parsed_address[3], longitude=results[0], latitude=results[1])
 
-            data = [{"address_line": address_line,
-                    "city": city,
-                     "state": state,
-                     "zip_code": zipcode,
-                     "longitude": results[0],
-                     "latitude": results[1]}]
+            data = {"address_line": parsed_address[0],
+                    "city": parsed_address[1],
+                    "state": parsed_address[2],
+                    "zip_code": parsed_address[3],
+                    "longitude": results[0],
+                    "latitude": results[1]}
+            cache.set(encoded_address, data)
 
-            return render_template("geocode.html", results=data)
-
+            return data
         else:
-            flash("Sorry, your address isn't valid. Redirecting back home")
-            return redirect('/')
+            return "We couldn't find an address. Please try again."
+
+    except:
+        flash("Sorry, your address isn't valid. Redirecting back home")
+
+        return redirect('/')
 
 
 if __name__ == "__main__":
