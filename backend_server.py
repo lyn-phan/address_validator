@@ -138,6 +138,9 @@ def call_API_to_get_lat_long(encoded_address, query_address):
 
 def validate_user_input(item):
     # check if user input is a string and it's valid
+    if not isinstance(item, dict):
+        raise TypeError(
+            "Sorry, you entered an invalid type. Please be sure it is a dictionary.")
 
     for v in item.values():
         if isinstance(v, str) is True:
@@ -157,18 +160,15 @@ def verify_and_return_address_array(query_address):
         raise ValueError("Your parameters are empty.")
 
     for item in query_address:
-        # try:
-        if validate_user_input(item) is True:
-            queried_address = query_address_data(item)
-            if queried_address is not None:
-                address_arr.append(queried_address)
-            else:
-                return "Your address is invalid. Let's check your input"
-    # if user_input is not a string, we append None
-        # elif validate_user_input(item) is False:
-        #     address_arr.append(None)
-        #     continue
-        else:
+        try:
+            if validate_user_input(item) is True:
+                queried_address = query_address_data(item)
+                if queried_address is not None:
+                    address_arr.append(queried_address)
+                else:
+                    return "Your address is invalid. Let's check your input"
+
+        except:
             raise TypeError(
                 "Sorry, you entered an invalid type. Please be sure it is a string.")
 
@@ -178,25 +178,27 @@ def verify_and_return_address_array(query_address):
 if __name__ == "__main__":
     connect_to_db(app)
 
-    # query_address = [{"address_line_one": "900 Lombard Street",
-#                   "city": "San Francisco", "state": "CA", "zip_code": "94133"},
-#                  {"address_line_one": "1 La Avanzada Street",
-#                  "city": "San Francisco", "state": "CA", "zip_code": "94131"},
-#                  {"address_line_one": "20 W 34th Street",
-#                  "city": "New York", "state": "NY", "zip_code": "10001"}]
-# query_address = []  # returns false --> Value Error
-# query_address = [{}]  # returns an empty list
-# query_address = ""  # returns an empty list
-# query_address = [1234]
+    # query_address = [{},
+    #                  {"address_line_one": "1 La Avanzada Street",
+    #                   "city": "San Francisco", "state": "CA", "zip_code": "94131"},
+    #                  {"address_line_one": "20 W 34th Street",
+    #                   "city": "New York", "state": "NY", "zip_code": "10001"}]
+    # query_address = [{"address_line_one": "fake address",
+    #                   "city": "fake city", "state": "12", "zip_code": "12345"},
+    #                  {"address_line_one": "1 La Avanzada Street",
+    #                   "city": "San Francisco", "state": "CA", "zip_code": "94131"},
+    #                  {"address_line_one": "20 W 34th Street",
+    #                   "city": "New York", "state": "NY", "zip_code": "10001"}] --> returns "normal results"
+    # query_address = []  # returns false --> Value Error
+    # query_address = [{}]  # returns an empty list
+    # query_address = ""  # returns an empty list
+    # query_address = [1234] ---> TypeError
+
     query_address = [{"address_line_one": "900 E 11th Street",
                       "city": "Austin", "state": "TX", "zip_code": "78702"},
                      {"address_line_one": "1375 E Buena Vista Drive",
-                     "city": "Orlando", "state": "FL", "zip_code": "32836"}]
+                      "city": "Orlando", "state": "FL", "zip_code": "32836"}]
 
-    print("\n")
     print("\n")
     print(verify_and_return_address_array(query_address))
     print("\n")
-
-
-# app.run(debug=True, host="0.0.0.0")
