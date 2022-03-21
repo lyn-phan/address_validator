@@ -23,17 +23,29 @@ load_dotenv()
 API_KEY = os.getenv("API_KEY")
 
 
-def check_db(query_address):
-    """grabs user input and checks database for records"""
+def format_user_input(query_address):
+    """helper function to take query address and add to a list for access"""
+    address_arr = []
 
     address_line_one = str(query_address["address_line_one"])
     city = str(query_address["city"])
     state = str(query_address["state"])
     zip_code = str(query_address["zip_code"])
 
+    address_arr.append(address_line_one)
+    address_arr.append(city)
+    address_arr.append(state)
+    address_arr.append(zip_code)
+
+    return address_arr
+
+
+def check_db(query_address):
+    """grabs user input and checks database for records"""
+
+    address_arr = format_user_input(query_address)
     check_db_for_address = crud.find_address(
-        address_line_one=address_line_one, city=city, state=state, zip_code=zip_code)
-    print(check_db_for_address)
+        address_line_one=address_arr[0], city=address_arr[1], state=address_arr[2], zip_code=address_arr[3])
 
     if check_db_for_address:
         data = {"address_line_one": check_db_for_address[0],
@@ -42,15 +54,11 @@ def check_db(query_address):
                 "zip_code": check_db_for_address[3],
                 "latitude": check_db_for_address[4],
                 "longitude": check_db_for_address[5]}
-        print(data)
+
         return data
     else:
         return None
 
-
-# query_address = {"address_line_one": "600 Montgomery Street",
-#                  "city": "San Francisco", "state": "CA", "zip_code": "94111"}
-# print(check_db(query_address))
 
 def query_address_data(query_address):
     """encode the queried address, then checks cache or db to see if address exists. If it does, we return it"""
@@ -76,6 +84,23 @@ def query_address_data(query_address):
         call_API_to_get_lat_long(encoded_address, query_address)
 
 
+def add_data_to_db(query_address, results):
+    """helper function to add data to db"""
+
+    address_arr = format_user_input(query_address)
+
+    added_address = crud.add_address(
+        address_line_one=address_arr[0], city=address_arr[1], state=address_arr[2], zip_code=address_arr[3])
+
+    return added_address
+
+
+def cache_data(encoded_address, data):
+    """helper function to cache data"""
+
+    cache.set(encoded_address, data)
+
+
 def call_API_to_get_lat_long(encoded_address, query_address):
     """makes an API call if address isn't cached or in db"""
 
@@ -90,27 +115,32 @@ def call_API_to_get_lat_long(encoded_address, query_address):
 
     # lat & long returned from API
     results = list(res["features"][0]["center"])
+
     if results:
         # we add results from API to db
-        address_line_one = str(query_address["address_line_one"])
-        city = str(query_address["city"])
-        state = str(query_address["state"])
-        zip_code = str(query_address["zip_code"])
-
-        added_address = crud.add_address(
-            address_line_one=address_line_one, city=city, state=state, zip_code=zip_code, longitude=results[0], latitude=results[1])
-
-        data = {"address_line_one": address_line_one,
-                "city": city,
-                "state": state,
-                "zip_code": zip_code,
+        current_address = format_user_input(query_address)
+        data = {"address_line_one": current_address[0],
+                "city": current_address[1],
+                "state": current_address[2],
+                "zip_code": current_address[3],
                 "longitude": results[0],
                 "latitude": results[1]}
-        cache.set(encoded_address, data)
+
+        add_results_to_db = add_data_to_db(query_address, results)
+        add_data_to_cache = cache_data(encoded_address, data)
 
         return data
     else:
         return "We couldn't find an address. Please try again."
+
+
+def validate_user_input(query_address):
+    # check if user input is a string and it's valid
+    for item in query_address:
+        if query_address[item] is type(str):
+            return True
+        else:
+            return False
 
 
 def verify_and_return_address_array(query_address):
@@ -119,10 +149,13 @@ def verify_and_return_address_array(query_address):
     if query_address == []:
         return None
 
-    for item in range(len(query_address)):
-        if query_address_data(query_address[item]):
-            address_arr.append(query_address[item])
-        print(address_arr)
+    for item in query_address:
+
+        queried_address = query_address_data(item)
+        if queried_address is not None:
+            address_arr.append(queried_address)
+        else:
+            return "Your address is invalid. Please check your input."
 
     return address_arr
 
@@ -130,9 +163,14 @@ def verify_and_return_address_array(query_address):
 if __name__ == "__main__":
     connect_to_db(app)
     query_address = [{"address_line_one": "600 Montgomery Street",
-                      "city": "San Francisco", "state": "CA", "zip_code": "94111"}, {"address_line_one": "1 La Avanzada Street",
-                                                                                     "city": "San Francisco", "state": "CA", "zip_code": "94131"}
-                     ]
-    verify_and_return_address_array(query_address)
+                      "city": "San Francisco", "state": "CA", "zip_code": "94111"},
+                     {"address_line_one": "1 La Avanzada Street",
+                      "city": "San Francisco", "state": "CA", "zip_code": "94131"},
+                     {"address_line_one": "20 W 34th Street",
+                         "city": "New York", "state": "NY", "zip_code": "10001"}]
+    print("\n")
+    print("\n")
+    print(verify_and_return_address_array(query_address))
+    print("\n")
 
 # app.run(debug=True, host="0.0.0.0")
