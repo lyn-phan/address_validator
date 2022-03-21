@@ -10,7 +10,7 @@ class Address(db.Model):
     __tablename__ = 'addresses'
 
     address_id = db.Column(db.Integer, autoincrement=True, primary_key=True)
-    address_line = db.Column(db.String(45), nullable=False)
+    address_line_one = db.Column(db.String(45), nullable=False)
     city = db.Column(db.String(20), nullable=False)
     state = db.Column(db.String(20), nullable=False)
     zip_code = db.Column(db.String(20), nullable=False)
@@ -34,7 +34,7 @@ def connect_to_db(app, db_uri='postgresql:///addresses', echo=True):
 
 if __name__ == '__main__':
     """If the model is run or imported..."""
-    from server import app
+    from backend_server import app
     connect_to_db(app)
 
     db.create_all()

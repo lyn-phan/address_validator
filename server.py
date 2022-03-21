@@ -1,5 +1,4 @@
 
-from ast import parse
 from flask import Flask, request, redirect, render_template, flash
 from flask_caching import Cache
 import sqlalchemy
@@ -76,6 +75,11 @@ def geocode():
         data = cache.get(encoded_address)
         if data is not None:
             print("this is the cache result")
+            return data
+
+        data = check_db()
+        if data is not None:
+            print("this is a db hit!")
             return data
 
         mapbox_token = API_KEY
