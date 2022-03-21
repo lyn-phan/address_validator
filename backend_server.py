@@ -1,4 +1,3 @@
-from attr import validate
 from flask import Flask
 from flask_caching import Cache
 import os
@@ -6,7 +5,8 @@ from model import db, Address, connect_to_db
 from dotenv import load_dotenv
 import requests
 import crud
-from urllib.parse import quote, unquote
+from urllib.parse import quote
+from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 app.secret_key = os.getenv("app.secret_key")
@@ -17,6 +17,8 @@ config = {
 }
 app.config.from_mapping(config)
 cache.init_app(app)
+
+
 # load the API key
 load_dotenv()
 API_KEY = os.getenv("API_KEY")
@@ -175,24 +177,26 @@ def verify_and_return_address_array(query_address):
 
 if __name__ == "__main__":
     connect_to_db(app)
+
     # query_address = [{"address_line_one": "900 Lombard Street",
-    #                   "city": "San Francisco", "state": "CA", "zip_code": "94133"},
-    #                  {"address_line_one": "1 La Avanzada Street",
-    #                  "city": "San Francisco", "state": "CA", "zip_code": "94131"},
-    #                  {"address_line_one": "20 W 34th Street",
-    #                  "city": "New York", "state": "NY", "zip_code": "10001"}]
-    # query_address = []  # returns false --> Value Error
-    # query_address = [{}]  # returns an empty list
-    # query_address = ""  # returns an empty list
-    # query_address = [1234]
+#                   "city": "San Francisco", "state": "CA", "zip_code": "94133"},
+#                  {"address_line_one": "1 La Avanzada Street",
+#                  "city": "San Francisco", "state": "CA", "zip_code": "94131"},
+#                  {"address_line_one": "20 W 34th Street",
+#                  "city": "New York", "state": "NY", "zip_code": "10001"}]
+# query_address = []  # returns false --> Value Error
+# query_address = [{}]  # returns an empty list
+# query_address = ""  # returns an empty list
+# query_address = [1234]
     query_address = [{"address_line_one": "900 E 11th Street",
                       "city": "Austin", "state": "TX", "zip_code": "78702"},
                      {"address_line_one": "1375 E Buena Vista Drive",
-                      "city": "Orlando", "state": "FL", "zip_code": "32836"}]
+                     "city": "Orlando", "state": "FL", "zip_code": "32836"}]
 
     print("\n")
     print("\n")
     print(verify_and_return_address_array(query_address))
     print("\n")
+
 
 # app.run(debug=True, host="0.0.0.0")
