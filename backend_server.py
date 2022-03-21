@@ -1,5 +1,4 @@
-
-from base64 import encode
+from attr import validate
 from flask import Flask
 from flask_caching import Cache
 import os
@@ -134,11 +133,13 @@ def call_API_to_get_lat_long(encoded_address, query_address):
         return "We couldn't find an address. Please try again."
 
 
-def validate_user_input(query_address):
+def validate_user_input(item):
     # check if user input is a string and it's valid
-    for item in query_address:
-        if query_address[item] is type(str):
+    for k, v in item.items():
+        if isinstance(v, str):
             return True
+        elif not isinstance(v, str):
+            raise TypeError("Your parameters are not complete!")
         else:
             return False
 
@@ -150,19 +151,27 @@ def verify_and_return_address_array(query_address):
         return None
 
     for item in query_address:
-
-        queried_address = query_address_data(item)
-        if queried_address is not None:
-            address_arr.append(queried_address)
-        else:
-            return "Your address is invalid. Please check your input."
+        print(item)
+        try:
+            if validate_user_input(item) is True:
+                queried_address = query_address_data(item)
+                if queried_address is not None:
+                    address_arr.append(queried_address)
+                else:
+                    return "Your address is invalid. Please check your input."
+        # if user_input is not a string, we append None
+            elif validate_user_input(item) is False:
+                address_arr.append(None)
+                continue
+        except SyntaxError:
+            raise ValueError("Your parameters are not complete!")
 
     return address_arr
 
 
 if __name__ == "__main__":
     connect_to_db(app)
-    query_address = [{"address_line_one": "600 Montgomery Street",
+    query_address = [{"address_line_one": 112,
                       "city": "San Francisco", "state": "CA", "zip_code": "94111"},
                      {"address_line_one": "1 La Avanzada Street",
                       "city": "San Francisco", "state": "CA", "zip_code": "94131"},
